@@ -5,6 +5,9 @@ import type { Filters } from '../../pages/Homepage';
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { Button } from '../ui/button';
 
+// Leaflet is loaded from CDN in index.html
+declare const L: any;
+
 interface MapViewProps {
   parcels: Parcel[];
   selectedParcel: Parcel | null;
@@ -13,13 +16,10 @@ interface MapViewProps {
 }
 
 export function MapView({ parcels, selectedParcel, onParcelClick, filters }: MapViewProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isPanning, setIsPanning] = useState(false);
-  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
-  const [baseTransform, setBaseTransform] = useState({ scale: 1, offsetX: 0, offsetY: 0, minX: 0, minY: 0 });
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<L.Map | null>(null);
+  const layerGroup = useRef<L.FeatureGroup | null>(null);
+  const [initialized, setInitialized] = useState(false);
 
   const getZoneColor = (parcel: Parcel) => {
     const zone = zoneRegulations.find(z => 
@@ -36,224 +36,108 @@ export function MapView({ parcels, selectedParcel, onParcelClick, filters }: Map
     }
   };
 
-  // Resize canvas to match container
+  // Get center of municipality based on filter
+  const getMunicipalityCenter = (): [number, number] => {
+    if (filters.municipality === 'waterloo') {
+      return [43.4516, -80.4925];
+    } else if (filters.municipality === 'guelph') {
+      return [43.5433, -80.2506];
+    }
+    return [43.5, -80.3];
+  };
+
+  // Initialize map
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
+    if (!mapContainer.current || initialized) return;
 
-    const resizeCanvas = () => {
-      canvas.width = container.clientWidth;
-      canvas.height = container.clientHeight;
-    };
+    const center = getMunicipalityCenter();
+    map.current = L.map(mapContainer.current).setView(center, 15);
 
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-    return () => window.removeEventListener('resize', resizeCanvas);
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19,
+    }).addTo(map.current);
+
+    // Create feature group for parcels
+    layerGroup.current = L.featureGroup().addTo(map.current);
+
+    setInitialized(true);
   }, []);
 
+  // Update map when parcels or municipality changes
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!map.current || !layerGroup.current) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    // Clear previous layers
+    layerGroup.current.clearLayers();
 
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Add parcel polygons
+    parcels.forEach((parcel) => {
+      if (!parcel.geom || parcel.geom.length === 0) return;
 
-    // Draw background
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const isSelected = selectedParcel?.id === parcel.id;
+      const color = getZoneColor(parcel);
 
-    // Draw municipality label
-    ctx.fillStyle = '#475569';
-    ctx.font = 'bold 20px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(filters.municipality.toUpperCase(), canvas.width / 2, 35);
-    ctx.textAlign = 'left'; // Reset text alignment
+      // Convert geom coordinates to Leaflet format [lat, lng]
+      const latlngs = parcel.geom.map(coord => [coord.lat, coord.lng] as [number, number]);
 
-    // Calculate bounding box of all parcels to center them
-    if (parcels.length > 0) {
-      let minX = Infinity, maxX = -Infinity;
-      let minY = Infinity, maxY = -Infinity;
-      
-      parcels.forEach(parcel => {
-        parcel.coordinates.forEach(coord => {
-          minX = Math.min(minX, coord.x);
-          maxX = Math.max(maxX, coord.x);
-          minY = Math.min(minY, coord.y);
-          maxY = Math.max(maxY, coord.y);
-        });
+      const polygon = L.polygon(latlngs, {
+        color: isSelected ? '#1e293b' : '#64748b',
+        weight: isSelected ? 3 : 2,
+        opacity: 1,
+        fillColor: color,
+        fillOpacity: 0.6,
       });
 
-      const parcelWidth = maxX - minX;
-      const parcelHeight = maxY - minY;
-      
-      const availableWidth = canvas.width - 40;
-      const availableHeight = canvas.height - 90;
-      
-      const scaleX = availableWidth / parcelWidth;
-      const scaleY = availableHeight / parcelHeight;
-      const baseScale = Math.min(scaleX, scaleY);
-      
-      const scaledWidth = parcelWidth * baseScale;
-      const baseOffsetX = (canvas.width - scaledWidth) / 2;
-      const baseOffsetY = 60;
+      // Add popup with parcel info
+      polygon.bindPopup(`
+        <div class="p-2">
+          <p class="font-semibold">${parcel.address}</p>
+          <p class="text-sm text-gray-600">Zone: ${parcel.zoneCode}</p>
+          <p class="text-sm text-gray-600">Area: ${parcel.area} m²</p>
+        </div>
+      `);
 
-      // Store base transform for reset
-      setBaseTransform({ scale: baseScale, offsetX: baseOffsetX, offsetY: baseOffsetY, minX, minY });
-
-      // Apply zoom and pan
-      const scale = baseScale * zoom;
-      const offsetX = baseOffsetX + pan.x;
-      const offsetY = baseOffsetY + pan.y;
-
-      // Draw parcels with scale and offset
-      parcels.forEach(parcel => {
-        const color = getZoneColor(parcel);
-        const isSelected = selectedParcel?.id === parcel.id;
-
-        // Fill parcel
-        ctx.fillStyle = color;
-        ctx.globalAlpha = 0.6;
-        ctx.beginPath();
-        const firstX = (parcel.coordinates[0].x - minX) * scale + offsetX;
-        const firstY = (parcel.coordinates[0].y - minY) * scale + offsetY;
-        ctx.moveTo(firstX, firstY);
-        parcel.coordinates.forEach(coord => {
-          const x = (coord.x - minX) * scale + offsetX;
-          const y = (coord.y - minY) * scale + offsetY;
-          ctx.lineTo(x, y);
-        });
-        ctx.closePath();
-        ctx.fill();
-
-        // Draw border
-        ctx.globalAlpha = 1;
-        ctx.strokeStyle = isSelected ? '#1e293b' : '#64748b';
-        ctx.lineWidth = isSelected ? 3 : 1;
-        ctx.stroke();
-
-        // Draw parcel label
-        const centerX = parcel.coordinates.reduce((sum, c) => sum + (c.x - minX) * scale, 0) / parcel.coordinates.length + offsetX;
-        const centerY = parcel.coordinates.reduce((sum, c) => sum + (c.y - minY) * scale, 0) / parcel.coordinates.length + offsetY;
-        
-        ctx.fillStyle = '#1e293b';
-        ctx.font = `bold ${Math.max(11, Math.floor(14 * baseScale * zoom))}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText(parcel.zoneCode, centerX, centerY);
-      });
-    }
-
-    ctx.globalAlpha = 1;
-    ctx.textAlign = 'left'; // Reset text alignment
-  }, [parcels, selectedParcel, filters.municipality, zoom, pan]);
-
-  const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (isPanning) return; // Don't select parcel if we were panning
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-
-    // Use base transform
-    const scale = baseTransform.scale * zoom;
-    const offsetX = baseTransform.offsetX + pan.x;
-    const offsetY = baseTransform.offsetY + pan.y;
-    const minX = baseTransform.minX;
-    const minY = baseTransform.minY;
-
-    // Check which parcel was clicked
-    for (const parcel of parcels) {
-      const ctx = canvas.getContext('2d');
-      if (!ctx) continue;
-
-      ctx.beginPath();
-      const firstX = (parcel.coordinates[0].x - minX) * scale + offsetX;
-      const firstY = (parcel.coordinates[0].y - minY) * scale + offsetY;
-      ctx.moveTo(firstX, firstY);
-      parcel.coordinates.forEach(coord => {
-        const px = (coord.x - minX) * scale + offsetX;
-        const py = (coord.y - minY) * scale + offsetY;
-        ctx.lineTo(px, py);
-      });
-      ctx.closePath();
-
-      if (ctx.isPointInPath(x, y)) {
+      // Click handler
+      polygon.on('click', (e) => {
+        L.DomEvent.stopPropagation(e);
         onParcelClick(parcel);
-        return;
-      }
-    }
-  };
+      });
 
-  const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    setIsPanning(true);
-    setPanStart({ x: event.clientX - pan.x, y: event.clientY - pan.y });
-  };
-
-  const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isPanning) return;
-    setPan({
-      x: event.clientX - panStart.x,
-      y: event.clientY - panStart.y,
+      polygon.addTo(layerGroup.current);
     });
-  };
 
-  const handleMouseUp = () => {
-    setIsPanning(false);
-  };
-
-  const handleWheel = (event: React.WheelEvent<HTMLCanvasElement>) => {
-    event.preventDefault();
-    const delta = event.deltaY > 0 ? 0.9 : 1.1;
-    setZoom(prevZoom => Math.max(0.5, Math.min(5, prevZoom * delta)));
-  };
+    // Fit map to parcels bounds
+    if (parcels.length > 0 && parcels[0].geom && parcels[0].geom.length > 0) {
+      const bounds = L.latLngBounds(
+        parcels
+          .filter(p => p.geom && p.geom.length > 0)
+          .flatMap(p => p.geom!.map(coord => [coord.lat, coord.lng] as [number, number]))
+      );
+      map.current?.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+    }
+  }, [parcels, selectedParcel, onParcelClick]);
 
   const handleZoomIn = () => {
-    setZoom(prevZoom => Math.min(5, prevZoom * 1.2));
+    map.current?.zoomIn();
   };
 
   const handleZoomOut = () => {
-    setZoom(prevZoom => Math.max(0.5, prevZoom / 1.2));
+    map.current?.zoomOut();
   };
 
   const handleReset = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-  };
-
-  // Determine the hint text based on what's being shown
-  const getHintText = () => {
-    if (filters.municipality === 'waterloo') {
-      return 'Showing Waterloo parcels';
-    } else if (filters.municipality === 'guelph') {
-      return 'Showing Guelph parcels';
-    }
-    return '';
+    const center = getMunicipalityCenter();
+    map.current?.setView(center, 15);
   };
 
   return (
-    <div className="w-full h-full bg-slate-100 relative flex justify-center items-start overflow-auto">
-      <canvas
-        ref={canvasRef}
-        width={700}
-        height={400}
-        onClick={handleCanvasClick}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
-        className={`max-w-full max-h-full w-auto h-auto ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
-        style={{ imageRendering: 'crisp-edges' }}
-      />
+    <div className="w-full h-full bg-slate-100 relative flex flex-col">
+      <div ref={mapContainer} className="flex-1 relative" id="map" />
       
       {/* Zoom controls */}
-      <div className="absolute top-4 right-4 flex flex-col gap-2">
+      <div className="absolute top-4 right-4 flex flex-col gap-2 z-[400]">
         <Button
           size="sm"
           variant="secondary"
@@ -281,11 +165,9 @@ export function MapView({ parcels, selectedParcel, onParcelClick, filters }: Map
         </Button>
       </div>
       
-      <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 text-xs">
+      <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-3 text-xs z-[400]">
         <p className="font-medium text-slate-900 mb-1">Click on any parcel to view details</p>
-        {/* <p className="text-slate-600">{getHintText()}</p> */}
         <p className="text-slate-600 mt-1">Colors indicate zoning restrictiveness</p>
-        <p className="text-slate-600 mt-1">Scroll to zoom • Drag to pan</p>
       </div>
     </div>
   );

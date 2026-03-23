@@ -28,6 +28,12 @@ export function SearchBar({ onSearch, searchResults, onSelectResult }: SearchBar
     setSearchQuery('');
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchResults.length > 0) {
+      handleSelectResult(searchResults[0]);
+    }
+  };
+
   const getResultIcon = (type: string) => {
     switch (type) {
       case 'parcel': return <MapPin className="w-4 h-4 text-blue-600" />;
@@ -42,13 +48,13 @@ export function SearchBar({ onSearch, searchResults, onSelectResult }: SearchBar
     : 'Search zoning rules (e.g., "two units allowed", "duplex permitted")';
 
   return (
-    <div className="border-b border-slate-200 bg-white p-4 relative z-10">
+    <div className="border-b border-slate-200 bg-white p-4 relative z-[9999]">
       <div className="max-w-4xl mx-auto flex gap-3">
         <Select value={searchType} onValueChange={(v) => setSearchType(v as any)}>
           <SelectTrigger className="w-40">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="z-[9999]">
             <SelectItem value="address">Address</SelectItem>
           </SelectContent>
         </Select>
@@ -60,11 +66,12 @@ export function SearchBar({ onSearch, searchResults, onSelectResult }: SearchBar
             placeholder={placeholderText}
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
+            onKeyPress={handleKeyPress}
             className="pl-10"
           />
 
           {showResults && searchResults.length > 0 && (
-            <Card className="absolute top-full mt-2 w-full max-h-96 overflow-y-auto shadow-lg z-50">
+            <Card className="absolute top-full mt-2 w-full max-h-96 overflow-y-auto shadow-lg z-[9999]">
               <div className="p-2">
                 {searchResults.slice(0, 10).map((result, idx) => (
                   <button
