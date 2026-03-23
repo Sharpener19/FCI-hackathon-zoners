@@ -2,7 +2,7 @@ import { Outlet, Link, useLocation } from 'react-router';
 import { Home, Scale, FileText, Building2 } from 'lucide-react';
 import { CiAvocado, CiBacon } from "react-icons/ci";
 import { FaHouseDamage } from "react-icons/fa";
-import { PiBuildingsFill, PiBoulesFill, PiClipboardTextFill } from "react-icons/pi";
+import { PiBuildingsFill, PiBoulesFill, PiClipboardTextFill, PiMagnifyingGlassLight } from "react-icons/pi";
 
 export function Layout() {
   const location = useLocation();
@@ -11,6 +11,7 @@ export function Layout() {
     { path: '/', label: 'Home', icon: PiBoulesFill },
     // { path: '/compare', label: 'Compare Cities', icon: PiBuildingsFill },
     { path: '/ocr', label: 'Document Upload', icon: PiClipboardTextFill },
+    { path: '/ask', label: 'Search', icon: PiMagnifyingGlassLight },
   ];
 
   return (
