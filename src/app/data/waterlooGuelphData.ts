@@ -180,11 +180,12 @@ export interface Parcel {
   frontage: number; // m
   depth: number; // m
   coordinates: { x: number; y: number }[]; // SVG polygon coordinates
+  geom?: { lat: number; lng: number }[]; // Geographical coordinates [lat, lng]
   currentUse?: string;
 }
 
 export const parcels: Parcel[] = [
-  // Waterloo parcels
+  // Waterloo parcels (centered around 43.4516° N, -80.4925° W)
   {
     id: 'wat-p1',
     municipalityId: 'waterloo',
@@ -198,6 +199,12 @@ export const parcels: Parcel[] = [
       { x: 110, y: 50 },
       { x: 110, y: 120 },
       { x: 50, y: 120 }
+    ],
+    geom: [
+      { lat: 43.4520, lng: -80.4930 },
+      { lat: 43.4520, lng: -80.4920 },
+      { lat: 43.4510, lng: -80.4920 },
+      { lat: 43.4510, lng: -80.4930 }
     ],
     currentUse: 'Single detached dwelling'
   },
@@ -215,6 +222,12 @@ export const parcels: Parcel[] = [
       { x: 165, y: 110 },
       { x: 115, y: 110 }
     ],
+    geom: [
+      { lat: 43.4525, lng: -80.4920 },
+      { lat: 43.4525, lng: -80.4910 },
+      { lat: 43.4515, lng: -80.4910 },
+      { lat: 43.4515, lng: -80.4920 }
+    ],
     currentUse: 'Semi-detached dwelling'
   },
   {
@@ -230,6 +243,12 @@ export const parcels: Parcel[] = [
       { x: 240, y: 50 },
       { x: 240, y: 130 },
       { x: 170, y: 130 }
+    ],
+    geom: [
+      { lat: 43.4530, lng: -80.4910 },
+      { lat: 43.4530, lng: -80.4895 },
+      { lat: 43.4510, lng: -80.4895 },
+      { lat: 43.4510, lng: -80.4910 }
     ],
     currentUse: 'Townhouse complex'
   },
@@ -247,6 +266,12 @@ export const parcels: Parcel[] = [
       { x: 330, y: 150 },
       { x: 245, y: 150 }
     ],
+    geom: [
+      { lat: 43.4535, lng: -80.4895 },
+      { lat: 43.4535, lng: -80.4875 },
+      { lat: 43.4505, lng: -80.4875 },
+      { lat: 43.4505, lng: -80.4895 }
+    ],
     currentUse: 'Apartment building'
   },
   {
@@ -262,6 +287,12 @@ export const parcels: Parcel[] = [
       { x: 105, y: 125 },
       { x: 105, y: 190 },
       { x: 50, y: 190 }
+    ],
+    geom: [
+      { lat: 43.4505, lng: -80.4930 },
+      { lat: 43.4505, lng: -80.4920 },
+      { lat: 43.4495, lng: -80.4920 },
+      { lat: 43.4495, lng: -80.4930 }
     ]
   },
   {
@@ -278,10 +309,16 @@ export const parcels: Parcel[] = [
       { x: 160, y: 175 },
       { x: 110, y: 175 }
     ],
+    geom: [
+      { lat: 43.4510, lng: -80.4920 },
+      { lat: 43.4510, lng: -80.4910 },
+      { lat: 43.4500, lng: -80.4910 },
+      { lat: 43.4500, lng: -80.4920 }
+    ],
     currentUse: 'Duplex'
   },
 
-  // Guelph parcels
+  // Guelph parcels (centered around 43.5433° N, -80.2506° W)
   {
     id: 'gue-p1',
     municipalityId: 'guelph',
@@ -295,6 +332,12 @@ export const parcels: Parcel[] = [
       { x: 430, y: 50 },
       { x: 430, y: 115 },
       { x: 380, y: 115 }
+    ],
+    geom: [
+      { lat: 43.5438, lng: -80.2510 },
+      { lat: 43.5438, lng: -80.2500 },
+      { lat: 43.5428, lng: -80.2500 },
+      { lat: 43.5428, lng: -80.2510 }
     ],
     currentUse: 'Single detached dwelling'
   },
@@ -312,6 +355,12 @@ export const parcels: Parcel[] = [
       { x: 480, y: 110 },
       { x: 435, y: 110 }
     ],
+    geom: [
+      { lat: 43.5443, lng: -80.2500 },
+      { lat: 43.5443, lng: -80.2490 },
+      { lat: 43.5433, lng: -80.2490 },
+      { lat: 43.5433, lng: -80.2500 }
+    ],
     currentUse: 'Semi-detached dwelling'
   },
   {
@@ -327,6 +376,12 @@ export const parcels: Parcel[] = [
       { x: 545, y: 50 },
       { x: 545, y: 125 },
       { x: 485, y: 125 }
+    ],
+    geom: [
+      { lat: 43.5448, lng: -80.2490 },
+      { lat: 43.5448, lng: -80.2475 },
+      { lat: 43.5428, lng: -80.2475 },
+      { lat: 43.5428, lng: -80.2490 }
     ],
     currentUse: 'Townhouse'
   },
@@ -344,6 +399,12 @@ export const parcels: Parcel[] = [
       { x: 625, y: 145 },
       { x: 550, y: 145 }
     ],
+    geom: [
+      { lat: 43.5453, lng: -80.2475 },
+      { lat: 43.5453, lng: -80.2455 },
+      { lat: 43.5423, lng: -80.2455 },
+      { lat: 43.5423, lng: -80.2475 }
+    ],
     currentUse: 'Apartment building'
   },
   {
@@ -359,6 +420,12 @@ export const parcels: Parcel[] = [
       { x: 425, y: 120 },
       { x: 425, y: 180 },
       { x: 380, y: 180 }
+    ],
+    geom: [
+      { lat: 43.5428, lng: -80.2510 },
+      { lat: 43.5428, lng: -80.2500 },
+      { lat: 43.5418, lng: -80.2500 },
+      { lat: 43.5418, lng: -80.2510 }
     ]
   },
   {
@@ -374,6 +441,12 @@ export const parcels: Parcel[] = [
       { x: 475, y: 115 },
       { x: 475, y: 170 },
       { x: 430, y: 170 }
+    ],
+    geom: [
+      { lat: 43.5433, lng: -80.2500 },
+      { lat: 43.5433, lng: -80.2490 },
+      { lat: 43.5423, lng: -80.2490 },
+      { lat: 43.5423, lng: -80.2500 }
     ],
     currentUse: 'Triplex'
   }
